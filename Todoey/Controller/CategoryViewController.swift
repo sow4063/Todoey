@@ -8,8 +8,9 @@
 
 import UIKit
 import RealmSwift
+import ChameleonFramework
 
-class CategoryViewController: UITableViewController {
+class CategoryViewController: SwipeTableViewController {
     
     let realm = try! Realm()
 
@@ -19,6 +20,9 @@ class CategoryViewController: UITableViewController {
         super.viewDidLoad()
         
         loadCategories()
+        
+        tableView.separatorStyle = .none
+        
 
     }
     
@@ -26,11 +30,18 @@ class CategoryViewController: UITableViewController {
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return categories?.count ?? 1
     }
-    
+
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "CategoryCell", for: indexPath)
+        let cell = super.tableView(tableView, cellForRowAt: indexPath)
         
-        cell.textLabel?.text = categories?[indexPath.row].name ?? "No Category is added yet"
+        guard let category = categories?[indexPath.row] else {fatalError()}
+        
+        cell.textLabel?.text = category.name
+        
+        guard let categoryColor = UIColor(hexString: category.color) else {fatalError()}
+        
+        cell.backgroundColor = categoryColor
+        cell.textLabel?.textColor = ContrastColorOf(categoryColor, returnFlat: true)
         
         return cell
     }
@@ -50,28 +61,29 @@ class CategoryViewController: UITableViewController {
     
     
     @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
-                var textField = UITextField()
+        var textField = UITextField()
+
+        let alert = UIAlertController(title: "Add New Category", message: "", preferredStyle: .alert)
+
+        let action = UIAlertAction(title: "Add", style: .default) { (action) in
+            // what will happen once the user clicks the item Add Item button on our UIAlert
+
+            let newCategory = Category()
+            newCategory.name = textField.text!
+            newCategory.color = UIColor.randomFlat.hexValue()
         
-                let alert = UIAlertController(title: "Add New Category", message: "", preferredStyle: .alert)
-        
-                let action = UIAlertAction(title: "Add", style: .default) { (action) in
-                    // what will happen once the user clicks the item Add Item button on our UIAlert
-        
-                    let newCategory = Category()
-                    newCategory.name = textField.text!
-                
-                    self.save(category: newCategory)
-        
-                }
-        
-                alert.addTextField { (alertTextField) in
-                    alertTextField.placeholder = "Add a new category"
-                    textField = alertTextField
-                }
-        
-                alert.addAction(action)
-        
-                present(alert, animated: true, completion: nil)
+            self.save(category: newCategory)
+
+        }
+
+        alert.addTextField { (alertTextField) in
+            alertTextField.placeholder = "Add a new category"
+            textField = alertTextField
+        }
+
+        alert.addAction(action)
+
+        present(alert, animated: true, completion: nil)
     }
     
     //MARK: - Data Manipulation Methods
@@ -95,6 +107,20 @@ class CategoryViewController: UITableViewController {
         tableView.reloadData()
     }
     
-    
+    //MARK: - Delete Data From Swipe
+    override func updateDataModel(at indexPath: IndexPath) {
+        if let categoryDeletion = categories?[indexPath.row] {
+            do {
+                try self.realm.write {
+                    self.realm.delete(categoryDeletion)
+                }
+            }
+            catch {
+                print("Error Deleting Category, \(error)")
+            }
+        }
+    }
     
 }
+
+
